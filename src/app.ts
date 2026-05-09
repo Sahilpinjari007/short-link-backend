@@ -1,4 +1,5 @@
 import express from 'express';
+import errorMiddleware from './middleware/error.middleware';
 
 
 
@@ -16,4 +17,5 @@ app.get('/', (req, res) => {
 });
 
 
+app.use(errorMiddleware);
 export default app;
