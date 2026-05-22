@@ -10,6 +10,7 @@ import {
 } from "../modules/link/link.service";
 import AppResponse from "../utils/AppResponse";
 import { GetUserLinksQuery } from "../types/link.type";
+import { getClientILp } from "../utils/analytics.util";
 
 export const createLink = asyncHandler(async (req: Request, res: Response) => {
   const user = req.user!;
@@ -26,9 +27,21 @@ export const redirectLink = asyncHandler(
       shortCode: string;
     };
 
-    const data = await redirectLinkService(domain, shortCode);
+    const ipAddress = getClientILp(req);
+    const userAgent = req.headers["user-agent"]!;
+    const referrer = req.headers.referer!;
 
-    return res.status(200).json(new AppResponse("Redirect link validated", data));
+    const data = await redirectLinkService(
+      domain,
+      shortCode,
+      ipAddress,
+      userAgent,
+      referrer,
+    );
+
+    return res
+      .status(200)
+      .json(new AppResponse("Redirect link validated", data));
   },
 );
 
@@ -36,7 +49,18 @@ export const verifyLinkPassword = asyncHandler(
   async (req: Request, res: Response) => {
     const { domain, shortCode, password } = req.body;
 
-    const data = await verifyLinkPasswordService(domain, shortCode, password);
+    const ipAddress = getClientILp(req);
+    const userAgent = req.headers["user-agent"]!;
+    const referrer = req.headers.referer!;
+
+    const data = await verifyLinkPasswordService(
+      domain,
+      shortCode,
+      password,
+      ipAddress,
+      userAgent,
+      referrer,
+    );
 
     res.status(200).json(new AppResponse("Password verified", data));
   },

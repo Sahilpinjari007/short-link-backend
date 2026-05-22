@@ -7,7 +7,7 @@ interface TokenPayload {
 }
 
 export const generateAccessToken = async ({ userId }: TokenPayload) => {
-  return jwt.sign({ userId }, env.JWT_ACCESS_SECRET, { expiresIn: "15m" });
+  return jwt.sign({ userId }, env.JWT_ACCESS_SECRET, { expiresIn: "1d" });
 };
 
 export const generateRefreshToken = async ({ userId }: TokenPayload) => {

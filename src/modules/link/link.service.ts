@@ -7,6 +7,7 @@ import {
   GetUserLinksQuery,
   UpdateLinkPayload,
 } from "../../types/link.type";
+import { createAnalytics } from "../analytics/analytics.service";
 
 export const createLinkService = async (
   userId: string,
@@ -49,6 +50,9 @@ export const createLinkService = async (
 export const redirectLinkService = async (
   domain: string,
   shortCode: string,
+  ipAddress: string,
+  userAgent: string,
+  referrer: string,
 ) => {
   const link = await Link.findOne({ domain, shortCode }).select("+password");
 
@@ -90,6 +94,15 @@ export const redirectLinkService = async (
   link.clicks += 1;
   await link.save();
 
+  await createAnalytics({
+    userId: link.userId.toString(),
+    resourceType: "link",
+    resourceId: link._id.toString(),
+    ipAddress,
+    userAgent,
+    referrer,
+  });
+
   // redirect to main url
   return {
     type: "REDIRECT",
@@ -101,6 +114,9 @@ export const verifyLinkPasswordService = async (
   domain: string,
   shortCode: string,
   password: string,
+  ipAddress: string,
+  userAgent: string,
+  referrer: string,
 ) => {
   const link = await Link.findOne({ domain, shortCode }).select("+password");
 
@@ -120,6 +136,15 @@ export const verifyLinkPasswordService = async (
 
   link.clicks += 1;
   await link.save();
+
+  await createAnalytics({
+    userId: link.userId.toString(),
+    resourceType: "link",
+    resourceId: link._id.toString(),
+    ipAddress,
+    userAgent,
+    referrer,
+  });
 
   return {
     type: "REDIRECT",
