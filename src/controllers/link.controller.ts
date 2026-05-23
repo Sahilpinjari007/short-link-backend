@@ -3,7 +3,6 @@ import asyncHandler from "../utils/asynHandler";
 import {
   createLinkService,
   getUserLinksService,
-  redirectLinkService,
   toggleLinkStatusService,
   updateLinkService,
   verifyLinkPasswordService,
@@ -20,41 +19,15 @@ export const createLink = asyncHandler(async (req: Request, res: Response) => {
   return res.status(200).json(new AppResponse("Short URL created", link));
 });
 
-export const redirectLink = asyncHandler(
-  async (req: Request, res: Response) => {
-    const { domain, shortCode } = req.params as {
-      domain: string;
-      shortCode: string;
-    };
-
-    const ipAddress = getClientILp(req);
-    const userAgent = req.headers["user-agent"]!;
-    const referrer = req.headers.referer!;
-
-    const data = await redirectLinkService(
-      domain,
-      shortCode,
-      ipAddress,
-      userAgent,
-      referrer,
-    );
-
-    return res
-      .status(200)
-      .json(new AppResponse("Redirect link validated", data));
-  },
-);
-
 export const verifyLinkPassword = asyncHandler(
   async (req: Request, res: Response) => {
-    const { domain, shortCode, password } = req.body;
+    const { shortCode, password } = req.body;
 
     const ipAddress = getClientILp(req);
     const userAgent = req.headers["user-agent"]!;
     const referrer = req.headers.referer!;
 
     const data = await verifyLinkPasswordService(
-      domain,
       shortCode,
       password,
       ipAddress,

@@ -47,78 +47,14 @@ export const createLinkService = async (
   return link;
 };
 
-export const redirectLinkService = async (
-  domain: string,
-  shortCode: string,
-  ipAddress: string,
-  userAgent: string,
-  referrer: string,
-) => {
-  const link = await Link.findOne({ domain, shortCode }).select("+password");
-
-  if (!link) {
-    // if link not found
-    return {
-      type: "ERROR",
-      state: "link-not-found",
-    };
-  }
-
-  if (link.status !== "Active") {
-    // if link is inactive
-    return {
-      type: "ERROR",
-      state: "link-inactive",
-    };
-  }
-
-  if (
-    (link.startAt && link.startAt > new Date()) ||
-    (link.endAt && link.endAt < new Date())
-  ) {
-    // if link is expired
-    return {
-      type: "ERROR",
-      state: "link-expired",
-    };
-  }
-
-  if (link.isPasswordProtected) {
-    // if link has password
-    return {
-      type: "ERROR",
-      state: "link-unauthorized",
-    };
-  }
-
-  link.clicks += 1;
-  await link.save();
-
-  await createAnalytics({
-    userId: link.userId.toString(),
-    resourceType: "link",
-    resourceId: link._id.toString(),
-    ipAddress,
-    userAgent,
-    referrer,
-  });
-
-  // redirect to main url
-  return {
-    type: "REDIRECT",
-    redirectUrl: link.originalUrl,
-  };
-};
-
 export const verifyLinkPasswordService = async (
-  domain: string,
   shortCode: string,
   password: string,
   ipAddress: string,
   userAgent: string,
   referrer: string,
 ) => {
-  const link = await Link.findOne({ domain, shortCode }).select("+password");
+  const link = await Link.findOne({ shortCode }).select("+password");
 
   if (!link) {
     throw new AppError("Link not found", 404);
