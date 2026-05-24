@@ -6,6 +6,7 @@ import { Analytics } from "../../models/analytics.model";
 import { Link } from "../../models/link.model";
 import mongoose from "mongoose";
 import { normalizeTrafficSource } from "../../utils/analytics.util";
+import { QR } from "../../models/qr.model";
 
 export const createAnalytics = async (payload: CreateAnalyticsPayload) => {
   //system details
@@ -31,97 +32,19 @@ export const createAnalytics = async (payload: CreateAnalyticsPayload) => {
 };
 
 export const overviewService = async (userId: string) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const last30Days = new Date();
-  last30Days.setDate(last30Days.getDate() - 30);
-
   const userObjectId = new mongoose.Types.ObjectId(userId);
 
-  const [linksResult, analyticsResult] = await Promise.all([
-    /**
-     * TOTAL LINKS
-     */
-    Link.aggregate([
-      {
-        $match: {
-          userId: userObjectId,
-        },
-      },
-
-      {
-        $count: "totalLinks",
-      },
-    ]),
-
-    /**
-     * ANALYTICS STATS
-     */
-    Analytics.aggregate([
-      {
-        $match: {
-          userId: userObjectId,
-          resourceType: "link",
-        },
-      },
-
-      {
-        $facet: {
-          /**
-           * total clicks
-           */
-          totalClicks: [
-            {
-              $count: "count",
-            },
-          ],
-
-          /**
-           * today clicks
-           */
-          clicksToday: [
-            {
-              $match: {
-                clickedAt: {
-                  $gte: today,
-                },
-              },
-            },
-
-            {
-              $count: "count",
-            },
-          ],
-
-          /**
-           * last 30 days
-           */
-          clicksLast30Days: [
-            {
-              $match: {
-                clickedAt: {
-                  $gte: last30Days,
-                },
-              },
-            },
-
-            {
-              $count: "count",
-            },
-          ],
-        },
-      },
-    ]),
-  ]);
+  const [totalLinks, totalClickOnLinks, totalQrs, totalScansOnQrs] =
+    await Promise.all([
+      Link.countDocuments({ userId: userObjectId }),
+      Analytics.countDocuments({ userId, resourceType: "link" }),
+      QR.countDocuments({ userId: userObjectId }),
+      Analytics.countDocuments({ userId, resourceType: "qr" }),
+    ]);
 
   return {
-    linksOverview: {
-      totalLinks: linksResult[0]?.totalLinks || 0,
-      totalClicks: analyticsResult[0]?.totalClicks[0]?.count || 0,
-      clicksToday: analyticsResult[0]?.clicksToday[0]?.count || 0,
-      clicksLast30Days: analyticsResult[0]?.clicksLast30Days[0]?.count || 0,
-    },
+    linksOverview: { totalLinks, totalClickOnLinks },
+    qrsOverview: { totalQrs, totalScansOnQrs },
   };
 };
 
@@ -158,38 +81,59 @@ export const accessOverTimeService = async (
     {
       $match: {
         userId: userObjectId,
-        resourceType: "link",
         clickedAt: { $gte: startDate },
       },
     },
     {
       $group: {
         _id: {
-          $dateToString: {
-            format: "%Y-%m-%d",
-            date: "$clickedAt",
+          date: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+
+              date: "$clickedAt",
+            },
           },
+          resourceType: "$resourceType",
         },
-        clicks: {
+        total: {
           $sum: 1,
         },
       },
     },
     {
       $sort: {
-        _id: 1,
-      },
-    },
-    {
-      $project: {
-        _id: 0,
-        date: "$_id",
-        clicks: 1,
+        "_id.date": 1,
       },
     },
   ]);
 
-  return analytics;
+  const groupedMap = new Map();
+
+  analytics.forEach((item) => {
+    const date = item._id.date;
+    const type = item._id.resourceType;
+
+    if (!groupedMap.has(date)) {
+      groupedMap.set(date, {
+        date,
+        clicks: 0,
+        scans: 0,
+      });
+    }
+
+    const existing = groupedMap.get(date);
+
+    if (type === "link") {
+      existing.clicks = item.total;
+    }
+
+    if (type === "qr") {
+      existing.scans = item.total;
+    }
+  });
+
+  return Array.from(groupedMap.values());
 };
 
 export const geographicAnalyticsService = async (userId: string) => {
@@ -447,13 +391,34 @@ export const recentActivityService = async (userId: string) => {
         from: "links",
         localField: "resourceId",
         foreignField: "_id",
-        as: "resource",
+        as: "linkResource",
       },
     },
     {
-      $unwind: {
-        path: "$resource",
-        preserveNullAndEmptyArrays: true,
+      $lookup: {
+        from: "qrs",
+        localField: "resourceId",
+        foreignField: "_id",
+        as: "qrResource",
+      },
+    },
+    {
+      $addFields: {
+        resource: {
+          $cond: {
+            if: {
+              $eq: ["$resourceType", "link"],
+            },
+
+            then: {
+              $arrayElemAt: ["$linkResource", 0],
+            },
+
+            else: {
+              $arrayElemAt: ["$qrResource", 0],
+            },
+          },
+        },
       },
     },
     {
@@ -471,6 +436,7 @@ export const recentActivityService = async (userId: string) => {
           title: "$resource.title",
           shortUrl: "$resource.shortUrl",
           originalUrl: "$resource.originalUrl",
+          targetUrl: "$resource.targetUrl",
         },
       },
     },
@@ -526,7 +492,52 @@ export const topPerformingResourcesService = async (userId: string) => {
     },
   ]);
 
+  const topQrs = await Analytics.aggregate([
+    {
+      $match: {
+        userId: userObjectId,
+        resourceType: "qr",
+      },
+    },
+    {
+      $group: {
+        _id: "$resourceId",
+        scans: {
+          $sum: 1,
+        },
+      },
+    },
+    {
+      $sort: {
+        scans: -1,
+      },
+    },
+    {
+      $limit: 5,
+    },
+    {
+      $lookup: {
+        from: "qrs",
+        localField: "_id",
+        foreignField: "_id",
+        as: "qrs",
+      },
+    },
+    {
+      $unwind: "$qrs",
+    },
+    {
+      $project: {
+        _id: 0,
+        scans: 1,
+        title: "$qrs.title",
+        targetUrl: "$qrs.targetUrl",
+      },
+    },
+  ]);
+
   return {
     topLinks,
+    topQrs,
   };
 };
