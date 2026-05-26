@@ -14,12 +14,14 @@ import linkRoute from "./routes/link.routes";
 import analyticsRoute from "./routes/analytics.route";
 import qrRoute from "./routes/qr.route";
 import redirectRoute from "./routes/redirect.route";
+import campaignRoute from "./routes/campaign.route";
 
 app.use("/api/v1/auth", authRoute);
 app.use("/api/v1/link", linkRoute);
 app.use("/api/v1/analytics", analyticsRoute)
 app.use("/api/v1/qr", qrRoute)
 app.use("/api/v1/redirect", redirectRoute)
+app.use("/api/v1/campaign", campaignRoute)
 
 
 app.get("/", (req, res) => {
