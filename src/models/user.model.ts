@@ -5,7 +5,6 @@ export interface IUser extends Document {
   fullname: string;
   email: string;
   password: string;
-  plan: "free" | "basic" | "pro" | "premium";
   isVerified: boolean;
   verificationOTP?: string;
   verificationOTPExpires?: Date;
@@ -28,11 +27,6 @@ const userSchema = new Schema<IUser>(
       trim: true,
     },
     password: { type: String, required: true },
-    plan: {
-      type: String,
-      enum: ["free", "basic", "pro", "premium"],
-      default: "free",
-    },
     isVerified: { type: Boolean, default: false },
     verificationOTP: { type: String },
     verificationOTPExpires: { type: Date },

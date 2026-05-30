@@ -13,4 +13,7 @@ export const env = {
     SMTP_USER: process.env.SMTP_USER as string,
     SMTP_PASS: process.env.SMTP_PASS as string,
     MAIL_FROM: process.env.MAIL_FROM as string,
+    RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID as string,
+    RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET as string,
+    RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET as string,
 };

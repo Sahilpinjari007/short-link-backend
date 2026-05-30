@@ -12,12 +12,18 @@ import {
   toggleCampaignStatus,
   updateCampaign,
 } from "../controllers/campaign.controller";
+import { checkFeatureLimit } from "../middleware/checkFeatureLimit.middleware";
 
 const router = Router();
 
 router
   .route("/")
-  .post(authMiddleware, validate(createCampaignSchema), createCampaign);
+  .post(
+    authMiddleware,
+    checkFeatureLimit("maxCampaigns"),
+    validate(createCampaignSchema),
+    createCampaign,
+  );
 router
   .route("/toggle-status/:campaignId")
   .patch(authMiddleware, toggleCampaignStatus);

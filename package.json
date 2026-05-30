@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "seed:plans": "tsx src/seed/seedPlans.ts"
   },
   "keywords": [],
   "author": "",
@@ -25,8 +26,10 @@
     "mongoose": "^9.6.2",
     "morgan": "^1.10.1",
     "nanoid": "^5.1.11",
+    "node-cron": "^4.2.1",
     "nodemailer": "^8.0.7",
     "qrcode": "^1.5.4",
+    "razorpay": "^2.9.6",
     "ua-parser-js": "^2.0.10",
     "zod": "^4.4.3"
   },
@@ -41,6 +44,7 @@
     "@types/nodemailer": "^8.0.0",
     "@types/qrcode": "^1.5.6",
     "ts-node-dev": "^2.0.0",
+    "tsx": "^4.22.3",
     "typescript": "^6.0.3"
   }
 }

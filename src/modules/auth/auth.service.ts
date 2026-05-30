@@ -14,8 +14,14 @@ import {
 import { env } from "../../config/env";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
+import Plan from "../../models/plan.model";
+import Subscription from "../../models/subscription.model";
 
-export const registerUserService = async (fullname: string, email: string, password: string) => {
+export const registerUserService = async (
+  fullname: string,
+  email: string,
+  password: string,
+) => {
   const existingUser = await User.findOne({ email });
 
   const otp = generateOTP();
@@ -70,6 +76,28 @@ export const verfiyOTPService = async (email: string, otp: string) => {
   ) {
     throw new AppError("OTP expired", 400);
   }
+
+  const freePlan = await Plan.findOne({
+    slug: "free",
+    isActive: true,
+  });
+
+  if (!freePlan) {
+    throw new AppError("Free plan not found", 500);
+  }
+
+  const startedAt = new Date();
+  const expiresAt = new Date();
+  expiresAt.setFullYear(expiresAt.getFullYear() + 100);
+
+  await Subscription.create({
+    userId: user._id,
+    planId: freePlan._id,
+    billingCycle: "monthly",
+    status: "active",
+    startedAt,
+    expiresAt,
+  });
 
   user.isVerified = true;
   user.verificationOTP = undefined;
